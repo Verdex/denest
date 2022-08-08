@@ -18,7 +18,7 @@ impl<'a, T> Iterator for LazyLinearization<'a, T> where T : Linearizable<'a> {
     }
 }
 
-trait Linearizable<'a> {
+pub trait Linearizable<'a> {
     fn l_next(&'a self) -> Vec<&'a Self>;
 
     fn lazy_linearization(&'a self) -> LazyLinearization<'a, Self> where Self : Sized{
