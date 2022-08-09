@@ -1,5 +1,5 @@
 
-pub struct LazyLinearization<'a, T> {
+pub struct LazyLinearization<'a, T> where T : Linearizable<'a> {
     q : Vec<&'a T>,
 }
 
