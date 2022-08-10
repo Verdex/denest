@@ -4,20 +4,41 @@ pub mod linearize;
 use linearize::{ LazyLinearization, Linearizable };
 
 pub struct LazyMatches<'a, T, Out> where T : Linearizable<'a> {
-    f : fn(&mut LazyLinearization<'a, T>) -> Option<&'a Out>,
+    f : fn(&mut LazyLinearization<'a, T>) -> Vec<&'a Out>,
     input : LazyLinearization<'a, T>,
+    q : Vec<&'a Out>,
 }
 
 impl<'a, T, Out> Iterator for LazyMatches<'a, T, Out> where T : Linearizable<'a> {
     type Item = &'a Out;
     fn next(&mut self) -> Option<Self::Item> {
-        (self.f)(&mut self.input)
+        if let Some(v) = self.q.pop() {
+            Some(v)
+        }
+        else {
+            let mut results = (self.f)(&mut self.input);
+            self.q.append(&mut results);
+            if let Some(v) = self.q.pop() {
+                Some(v)
+            } 
+            else {
+                None
+            }
+        }
     }
 }
 
+/*macro_rules! c {
+    ($ret:ident, $($x:tt)*) => {
+        macro_rules! it {
+            () => { pattern!($ret, $($x)*); };
+        }
+    };
+}*/
+
 #[macro_export]
 macro_rules! pattern {
-    ($name:ident : $t:ty => $out:ty = $init:pat, $b:block) => { // TODO include block
+    ($name:ident : $t:ty => $out:ty = $init:pat, $($rest:tt)*) => { // TODO include block
         // TODO isn't there some complication about namespaces with things like Linearizable?
         // I mean I'm probably going to expand into something that may not have the using I need ...
         // can I just assume that they'll include the using?
@@ -27,20 +48,82 @@ macro_rules! pattern {
             // Or I can just assume the consume is going to have the use someplace in scope
             let blarg = input.lazy_linearization();
 
-            fn run<'a>(input : &mut LazyLinearization<'a, $t>) -> Option<&'a $out> {
+            fn run<'a>(input : &mut LazyLinearization<'a, $t>) -> Vec<&'a $out> {
+                let mut ret = vec![];
                 while let Some(v) = input.next() {
                     match v {
-                        $init => { return Some($b); },
+                        $init => { 
+                            pattern!(ret, $($rest)*); 
+                            if ret.len() > 0 {
+                                // If anything was successful, then return it
+                                // otherwise we'll try again with input.next()
+                                return ret;
+                            }
+                        },
                         _ => { },
                     }
                 }
-                None
+                ret
             }
 
-            LazyMatches { f : run, input : blarg }
+            LazyMatches { f : run, input : blarg, q : vec![] }
         }
     };
-    ($name:ident : $t:ty => $out:ty = $init:pat, $( [$($var:ident),+] => $next:pat ),+, $b:block) => {
+    ($ret:ident, $b:block) => {
+        $ret.push($b);
+    };
+
+    ($ret:ident, [$($var:ident),+] => $next:pat, $($rest:tt)*) => {
+        let x = |v| match v {
+            $next => {
+                pattern!($ret, $($rest)*);
+            },
+            _ => { },
+        };
+        $(
+            x(*$var);
+        )+
+     };
+
+    /*($ret:ident, $( [$($var:ident),+] => $next:pat),*, $b:block) => {
+        $(
+            $(
+            if let $next = &**$var {
+                $ret.push($b);
+            }
+            )+
+        )*
+    };*/
+    /*($ret:ident, [$($var:ident),+] => $next:pat, $($rest:tt)*) => {
+        c!($ret, $($rest)*);
+        $(
+            if let $next = &**$var {
+                it!();
+            }
+        )+
+     };*/
+
+    /*($ret:ident, | $($var:ident), $($rest:tt)*) => { 
+        pattern!($ret, $($rest)*);
+    };
+    ($ret:ident, $($var:ident), $($rest:tt)*) => { 
+        pattern!($ret, $($rest)*);
+    };
+
+    ($ret:ident, $($var:ident)| => $($rest:tt)*) => { 
+        pattern!($ret, $($rest)*);
+    };
+    ($ret:ident, $next:pat, $($rest:tt)*) => { 
+        pattern!($ret, $($rest)*);
+    };*/
+    /*($ret:ident, [$($var:ident),+] => $next:pat, $($rest:tt)*) => {
+        $(
+            if let $next = &**$var {
+                pattern!($ret, $($rest)*);
+            }
+        )+
+     };*/
+    /*($name:ident : $t:ty => $out:ty = $init:pat, $( [$($var:ident),+] => $next:pat ),+, $b:block) => {
         fn $name<'a>( input : &'a $t ) -> LazyMatches<'a, $t, $out> {
 
             // TODO also use linearize::Linearizable needs to go in here, but will probably need a prefix (to a library namespace?)
@@ -67,7 +150,7 @@ macro_rules! pattern {
 
             LazyMatches { f : run, input : blarg }
         }
-    };
+    };*/
 }
 
 
@@ -108,8 +191,8 @@ mod tests {
     #[test]
     fn it_works() {
 
-        pattern!( zap : Tree => Thing = Tree::Node(z, zz), [z, zz] => Tree::Leaf(w), {
-            w
+        pattern!( zap : Tree => Thing = Tree::Node(z, zz), [z, zz] => Tree::Node(w, _), [w] => Tree::Leaf(x), {
+            x
         });
         pattern!( blarg : Tree => Thing = Tree::Leaf(z), {
             z
@@ -119,7 +202,7 @@ mod tests {
         }*/
 
 
-        for w in zap(&n(l(Thing { value: 5 }), l( Thing{ value: 6 }))) {
+        for w in zap(&n(n(l(Thing { value: 5 }), l( Thing{ value: 6 } )), l( Thing { value : 7 } ) ) ) {
             println!("{:?}", w);
         }
     }
