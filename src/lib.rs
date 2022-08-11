@@ -1,9 +1,9 @@
 
-pub struct LaxLinearization<'a, T> where T : Linearizable<'a> {
+pub struct Lax<'a, T> where T : Linearizable<'a> {
     q : Vec<&'a T>,
 }
 
-impl<'a, T> Iterator for LaxLinearization<'a, T> where T : Linearizable<'a> {
+impl<'a, T> Iterator for Lax<'a, T> where T : Linearizable<'a> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -56,8 +56,8 @@ impl<'a, T> Iterator for Paths<'a, T> where T : Linearizable<'a> {
 pub trait Linearizable<'a> {
     fn l_next(&'a self) -> Vec<&'a Self>;
 
-    fn to_lax(&'a self) -> LaxLinearization<'a, Self> where Self : Sized {
-        LaxLinearization { q: vec![ self ] }
+    fn to_lax(&'a self) -> Lax<'a, Self> where Self : Sized {
+        Lax { q: vec![ self ] }
     }
 
     fn paths(&'a self) -> Paths<'a, Self> where Self : Sized {
@@ -105,7 +105,7 @@ mod tests {
     }
 
     #[test]
-    fn lax_linearization_should_generate_linear_tree() {
+    fn lax_should_generate_linear_tree() {
         let input = n(n(l(1), l(2)), l(3));
 
         let output = input.to_lax().collect::<Vec<_>>();
