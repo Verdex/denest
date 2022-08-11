@@ -18,11 +18,50 @@ impl<'a, T> Iterator for LaxLinearization<'a, T> where T : Linearizable<'a> {
     }
 }
 
+pub struct Paths<'a, T> where T : Linearizable<'a> {
+    q : Vec<Vec<&'a T>>,
+    result : Vec<&'a T>,
+}
+
+impl<'a, T> Iterator for Paths<'a, T> where T : Linearizable<'a> {
+    type Item = Vec<&'a T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.q.pop() {
+                Some(mut xs) => {
+                    match xs.pop() {
+                        Some(x) => {
+                            self.q.push(xs);
+                            let n = x.l_next();
+                            self.q.push(n);
+                            self.result.push(x);
+                        },
+                        None => {
+                            if self.q.iter().map(|z| z.len()).fold(0, |s, i| s + i) == 0 { 
+                                self.q = vec![];
+                            }
+                            let ret = self.result.clone();
+                            self.result.pop();
+                            return Some(ret);
+                        },
+                    }
+                }
+                None => { return None; },
+            }
+        }
+    }
+}
+
 pub trait Linearizable<'a> {
     fn l_next(&'a self) -> Vec<&'a Self>;
 
-    fn to_lax(&'a self) -> LaxLinearization<'a, Self> where Self : Sized{
+    fn to_lax(&'a self) -> LaxLinearization<'a, Self> where Self : Sized {
         LaxLinearization { q: vec![ self ] }
+    }
+
+    fn paths(&'a self) -> Paths<'a, Self> where Self : Sized {
+        Paths { q : vec![ vec![ self ] ], result : vec![] }
     }
 }
 
@@ -52,6 +91,17 @@ mod tests {
 
     fn l(v : u8) -> Tree { 
         Tree::Leaf(v)
+    }
+
+    #[test]
+    fn check_paths() {
+        let input = n(n(l(1), l(2)), l(3));
+
+        let output = input.paths();
+
+        for x in output {
+            println!("{:?}", x);
+        }
     }
 
     #[test]
