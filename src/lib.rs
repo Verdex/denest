@@ -94,14 +94,16 @@ mod tests {
     }
 
     #[test]
-    fn check_paths() {
+    fn paths_should_return_all_paths() {
         let input = n(n(l(1), l(2)), l(3));
 
-        let output = input.paths();
+        let output = input.paths().collect::<Vec<_>>();
 
-        for x in output {
-            println!("{:?}", x);
-        }
+        assert_eq!( output, 
+            vec![ vec![ &n(n(l(1), l(2)), l(3)), &l(3) ]
+                , vec![ &n(n(l(1), l(2)), l(3)), &n(l(1), l(2)), &l(2)]
+                , vec![ &n(n(l(1), l(2)), l(3)), &n(l(1), l(2)), &l(1)]
+                ] );
     }
 
     #[test]
