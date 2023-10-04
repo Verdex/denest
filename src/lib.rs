@@ -149,7 +149,7 @@ mod tests {
     fn lax_cut_should_generate_linear_tree_with_cut_subtrees() {
         let input = n(n(s(n(l(0), l(1))), l(2)), n(l(3), l(4)));
 
-        let output = input.to_lax_cut(&mut |x| !matches!(x, Tree::SNode(_))).collect::<Vec<_>>();
+        let output = input.to_lax_cut(|x| !matches!(x, Tree::SNode(_))).collect::<Vec<_>>();
 
         assert_eq!( output, vec![ &n(n(s(n(l(0), l(1))), l(2)), n(l(3), l(4)))
                                 , &n(l(3), l(4))
@@ -165,7 +165,7 @@ mod tests {
         let input = n(n(s(n(l(0), l(1))), l(2)), n(l(3), l(4)));
 
         fn t<'a>(input : &'a Tree) -> impl Iterator<Item = &'a Tree> {
-            input.to_lax_cut(& |x| !matches!(x, Tree::SNode(_)))
+            input.to_lax_cut(|x| !matches!(x, Tree::SNode(_)))
         }
 
         let output = t(&input).collect::<Vec<_>>();
@@ -185,7 +185,7 @@ mod tests {
 
         fn t<'a>(input : &'a Tree) -> impl Iterator<Item = &'a Tree> {
             let target = l(2);
-            input.to_lax_cut(& move |x| *x != l(2))
+            input.to_lax_cut(move |x| *x != target)
         }
 
         let output = t(&input).collect::<Vec<_>>();
