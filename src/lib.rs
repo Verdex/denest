@@ -18,6 +18,26 @@ impl<'a, T> Iterator for Lax<'a, T> where T : Linearizable<'a> {
     }
 }
 
+pub struct LaxCut<'a, 'b, T> where T : Linearizable<'a> {
+    q : Vec<&'a T>,
+    f : &'b mut dyn FnMut(&T) -> bool,
+}
+
+impl<'a, 'b, T> Iterator for LaxCut<'a, 'b, T> where T : Linearizable<'a> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(x) = self.q.pop() {
+            if (self.f)(x) {
+                let mut nexts = x.l_next();
+                self.q.append(&mut nexts);
+                return Some(x);
+            }
+        }
+        None
+    }
+}
+
 pub struct Paths<'a, T> where T : Linearizable<'a> {
     q : Vec<Vec<&'a T>>,
     result : Vec<&'a T>,
@@ -58,6 +78,10 @@ pub trait Linearizable<'a> {
 
     fn to_lax(&'a self) -> Lax<'a, Self> where Self : Sized {
         Lax { q: vec![ self ] }
+    }
+
+    fn to_lax_cut<'b, F : FnMut(&Self) -> bool>(&'a self, f : &'b mut F) -> LaxCut<'a, 'b, Self> where Self : Sized {
+        LaxCut { q: vec![ self ], f }
     }
 
     fn paths(&'a self) -> Paths<'a, Self> where Self : Sized {
