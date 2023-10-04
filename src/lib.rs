@@ -159,4 +159,40 @@ mod tests {
                                 , &l(2)
                                 ] );
     }
+
+    #[test]
+    fn lax_cut_should_be_able_to_return() {
+        let input = n(n(s(n(l(0), l(1))), l(2)), n(l(3), l(4)));
+
+        fn t<'a>(input : &'a Tree) -> impl Iterator<Item = &'a Tree> {
+            input.to_lax_cut(& |x| !matches!(x, Tree::SNode(_)))
+        }
+
+        let output = t(&input).collect::<Vec<_>>();
+
+        assert_eq!( output, vec![ &n(n(s(n(l(0), l(1))), l(2)), n(l(3), l(4)))
+                                , &n(l(3), l(4))
+                                , &l(4)
+                                , &l(3)
+                                , &n(s(n(l(0), l(1))), l(2))
+                                , &l(2)
+                                ] );
+    }
+
+    #[test]
+    fn lax_cut_should_be_able_to_accept_moved_predicate() {
+        let input = n(n(l(1), l(2)), l(3));
+
+        fn t<'a>(input : &'a Tree) -> impl Iterator<Item = &'a Tree> {
+            let target = l(2);
+            input.to_lax_cut(& move |x| *x != l(2))
+        }
+
+        let output = t(&input).collect::<Vec<_>>();
+
+        assert_eq!( output, vec![ &n(n(l(1), l(2)), l(3))
+                                , &l(3), &n(l(1), l(2))
+                                , &l(1)
+                                ] );
+    }
 }
