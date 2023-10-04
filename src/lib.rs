@@ -96,6 +96,7 @@ mod tests {
 
     #[derive(Debug, PartialEq)]
     enum Tree { 
+        SNode(Box<Tree>),
         Node(Box<Tree>, Box<Tree>),
         Leaf(u8),
     }
@@ -103,10 +104,15 @@ mod tests {
     impl<'a> Linearizable<'a> for Tree {
         fn l_next(&'a self) -> Vec<&'a Self> {
             match self {
+                Tree::SNode(a) => vec![a],
                 Tree::Node(a, b) => vec![a, b],
                 Tree::Leaf(_) => vec![],
             }
         }
+    }
+
+    fn s(a : Tree) -> Tree {
+        Tree::SNode(Box::new(a))
     }
 
     fn n(a : Tree, b : Tree) -> Tree {
@@ -137,5 +143,20 @@ mod tests {
         let output = input.to_lax().collect::<Vec<_>>();
 
         assert_eq!( output, vec![&n(n(l(1), l(2)), l(3)), &l(3), &n(l(1), l(2)), &l(2), &l(1)] );
+    }
+
+    #[test]
+    fn lax_cut_should_generate_linear_tree_with_cut_subtrees() {
+        let input = n(n(s(n(l(0), l(1))), l(2)), n(l(3), l(4)));
+
+        let output = input.to_lax_cut(&mut |x| !matches!(x, Tree::SNode(_))).collect::<Vec<_>>();
+
+        assert_eq!( output, vec![ &n(n(s(n(l(0), l(1))), l(2)), n(l(3), l(4)))
+                                , &n(l(3), l(4))
+                                , &l(4)
+                                , &l(3)
+                                , &n(s(n(l(0), l(1))), l(2))
+                                , &l(2)
+                                ] );
     }
 }
