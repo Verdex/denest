@@ -18,12 +18,12 @@ impl<'a, T> Iterator for Lax<'a, T> where T : Linearizable<'a> {
     }
 }
 
-pub struct LaxCut<'a, 'b, T> where T : Linearizable<'a> {
+pub struct LaxCut<'a, T, F> where T : Linearizable<'a> {
     q : Vec<&'a T>,
-    f : &'b dyn Fn(&'a T) -> bool,
+    f : F,
 }
 
-impl<'a, 'b, T> Iterator for LaxCut<'a, 'b, T> where T : Linearizable<'a> {
+impl<'a, T, F> Iterator for LaxCut<'a, T, F> where T : Linearizable<'a>, F : FnMut(&T) -> bool {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -80,7 +80,7 @@ pub trait Linearizable<'a> {
         Lax { q: vec![ self ] }
     }
 
-    fn to_lax_cut<'b, F : Fn(&Self) -> bool>(&'a self, f : &'b F) -> LaxCut<'a, 'b, Self> where Self : Sized {
+    fn to_lax_cut<F : FnMut(&Self) -> bool>(&'a self, f : F) -> LaxCut<'a, Self, F> where Self : Sized {
         LaxCut { q: vec![ self ], f }
     }
 
